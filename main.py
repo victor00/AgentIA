@@ -46,7 +46,7 @@ def main():
         )
     ]
 
-    for _ in range(20):
+    for _ in range(10):
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=messages,
