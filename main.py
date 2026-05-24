@@ -46,57 +46,73 @@ def main():
         )
     ]
 
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt,
-            temperature=0,
-        ),
-    )
+    for _ in range(20):
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt,
+                temperature=0,
+            ),
+        )
 
-    if response.function_calls:
-        function_responses = []
+        if response.candidates:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
 
-        for function_call in response.function_calls:
-            function_call_result = call_function(
-                function_call,
-                verbose=args.verbose,
+        if response.function_calls:
+            function_responses = []
+
+            for function_call in response.function_calls:
+                function_call_result = call_function(
+                    function_call,
+                    verbose=args.verbose,
+                )
+
+                if not function_call_result.parts:
+                    raise RuntimeError(
+                        "Function call result has no parts"
+                    )
+
+                function_response = (
+                    function_call_result.parts[0]
+                    .function_response
+                )
+
+                if function_response is None:
+                    raise RuntimeError(
+                        "Function response is missing"
+                    )
+
+                if function_response.response is None:
+                    raise RuntimeError(
+                        "Function response content is missing"
+                    )
+
+                function_responses.append(
+                    function_call_result.parts[0]
+                )
+
+                if args.verbose:
+                    print(
+                        "-> "
+                        f"{function_response.response}"
+                    )
+
+            messages.append(
+                types.Content(
+                    role="user",
+                    parts=function_responses,
+                )
             )
 
-            if not function_call_result.parts:
-                raise RuntimeError(
-                    "Function call result has no parts"
-                )
+        else:
+            print("Final response:")
+            print(response.text)
+            return
 
-            function_response = (
-                function_call_result.parts[0]
-                .function_response
-            )
-
-            if function_response is None:
-                raise RuntimeError(
-                    "Function response is missing"
-                )
-
-            if function_response.response is None:
-                raise RuntimeError(
-                    "Function response content is missing"
-                )
-
-            function_responses.append(
-                function_call_result.parts[0]
-            )
-
-            if args.verbose:
-                print(
-                    "-> "
-                    f"{function_response.response}"
-                )
-
-    else:
-        print(response.text)
+    print("Error: Agent reached max iterations without completion")
 
 
 if __name__ == "__main__":
