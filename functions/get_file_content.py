@@ -1,6 +1,23 @@
 import os
 
+from google.genai import types
+
 from config import MAX_CHARS
+
+
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Reads the contents of a file relative to the working directory",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Path to the file relative to the working directory",
+            ),
+        },
+    ),
+)
 
 
 def get_file_content(working_directory: str, file_path: str) -> str:
@@ -22,10 +39,10 @@ def get_file_content(working_directory: str, file_path: str) -> str:
         if not os.path.isfile(target_file):
             return f'Error: File not found or is not a regular file: "{file_path}"'
 
-        with open(target_file, "r") as f:
-            content = f.read(MAX_CHARS)
+        with open(target_file, "r") as file:
+            content = file.read(MAX_CHARS)
 
-            if f.read(1):
+            if file.read(1):
                 content += (
                     f'[...File "{file_path}" truncated '
                     f"at {MAX_CHARS} characters]"
